@@ -1,0 +1,109 @@
+clear,clc
+addpath /Users/b4042552/Dropbox/Matlab/RiverBedGeometry
+addpath /Users/b4042552/Dropbox/Matlab/myfunction
+load all
+% cd('G:\Data\TyneCoast')
+% load XsectionLinnesUpstream
+% shpPolygon = shaperead('UpstreamRiver.shp');
+X = shpPolygon.X';
+Y = shpPolygon.Y';
+[~,ind] = min(X);
+XY1 = [X(2:ind-1),Y(2:ind-1)];
+XY2 = [X(ind:end-1),Y(ind:end-1)];
+bank1Points = XY1;
+bank2Points = XY2;
+cellsize = 5;
+bedRaster_r = makerefmat(min(shpPolygon.X),max(shpPolygon.Y),cellsize,-cellsize);
+ncols = round(range(shpPolygon.X)/cellsize)+1;
+nrows = round(range(shpPolygon.Y)/cellsize)+1;
+bedRaster_z = nan(nrows,ncols);
+[bedRaster_x,bedRaster_y] = Raster2FeaturePoints(bedRaster_z,bedRaster_r);
+crossLines = XsectionLinnesUpstream;
+paraba = @(x) 40*(x-0.5).^2;
+%%split river channel to sub-sections based on one bank line
+    % river banks towards to the same direction
+if abs(bank1Points(1,1)-bank2Points(1,1))>abs(bank1Points(1,1)-bank2Points(end,1))
+    bank2Points = bank2Points(end:-1:1,:);
+end
+    % get the relative length of bank points from start
+errorValue = 10;
+[splitPointsAll_1,splitPointsAll_2,sectionPoly] = DiscretizeRiverChannel(bank1Points,bank2Points,errorValue);
+splitPointsAll_M = (splitPointsAll_1+splitPointsAll_2)/2;
+crossLines0 = crossLines{1};
+crossLines1 = crossLines{2};
+crossLines0_W = RelativeCoordsCrossPoints(crossLines0,0);
+z1 = paraba(crossLines0_W(:,2));
+crossLines1_W = RelativeCoordsCrossPoints(crossLines1,1);
+z2 = paraba(crossLines1_W(:,2))+50;
+middleLine_L = RelativeCoordsBankPoints(splitPointsAll_M,0.5);
+interpW = (0:0.1:1)';
+crossLine0_mW = interp1(crossLines0_W(:,2),z1,interpW);
+crossLine1_mW = interp1(crossLines1_W(:,2),z2,interpW);
+crossLines_Z = nan(length(interpW),length(middleLine_L));
+crossLines_X = crossLines_Z;
+crossLines_Y = crossLines_Z;
+for n = 1:length(middleLine_L)
+    k = middleLine_L(n);
+    xy0 = splitPointsAll_1(n,:);
+    xy1 = splitPointsAll_2(n,:);
+    crossLines_Z(:,n) = (1-k)*crossLine0_mW+k*crossLine1_mW;
+    crossLines_X(:,n) = linspace(xy0(1),xy1(1),numel(interpW));
+    crossLines_Y(:,n) = linspace(xy0(2),xy1(2),numel(interpW));
+end
+%% interpolate for raster points
+
+for n=9%:length(sectionPoly)
+    polyX = sectionPoly(n).X;
+    polyY = sectionPoly(n).Y;
+    in = inpolygon(bedRaster_x,bedRaster_y,polyX,polyY);
+    %     x = [crossLines_X(:,n);crossLines_X(:,n+1)];
+    %     y = [crossLines_Y(:,n);crossLines_Y(:,n+1)];
+    %     v = [crossLines_Z(:,n);crossLines_Z(:,n+1)];
+    %     p = [x y];
+    %     [p,ia,ic]= unique(p,'rows','stable');
+    %     v = v(ia);
+    %     F = scatteredInterpolant(p,v);
+    crossLine0 = [crossLines_X(:,n),crossLines_Y(:,n),crossLines_Z(:,n)];
+    crossLine1 = [crossLines_X(:,n+1),crossLines_Y(:,n+1),crossLines_Z(:,n+1)];
+    resolution = 5;
+    [X_grid,Y_grid,Z_grid] = DiscretizeChannel2Points(crossLine0,crossLine1,resolution);
+    x = X_grid(:); y = Y_grid(:); p = [x,y];
+    [p,ia,ic]= unique(p,'rows','stable');
+    v = Z_grid(ia);
+    F = scatteredInterpolant(p,v);
+    xq = bedRaster_x(in);
+    yq = bedRaster_y(in);
+    zq = F(xq,yq);
+    bedRaster_z(in) = min([zq,bedRaster_z(in)]);
+end
+
+%%
+figure
+% hold on
+% scatter3(p(:,1),p(:,2),v)
+% scatter3(xq,yq,zq)
+% hold off
+% z_surf = flipud(bedRaster_z)';
+% surf(z_surf)
+mapshow(bedRaster_z,bedRaster_r,'DisplayType','surface')
+%%
+figure
+hold on
+plot(splitPointsAll_1(:,1),splitPointsAll_1(:,2),'b*')
+plot(bank1Points(:,1),bank1Points(:,2),'b-')
+plot(splitPointsAll_2(:,1),splitPointsAll_2(:,2),'r*')
+plot(bank2Points(:,1),bank2Points(:,2),'r-')
+plot(splitPointsAll_M(:,1),splitPointsAll_M(:,2),'ks-')
+mapshow(sectionPoly(10),'FaceColor','red')
+hold off
+axis equal
+%%
+figure;
+% scatter(X,Y,'s');axis equal
+hold on;
+plot(XY(:,1),XY(:,2),'b*');
+plot(xq,s,'r-');
+% plot(XY2(:,1),XY2(:,2),'b-');
+hold off
+%%
+save banklines XY1 XY2
