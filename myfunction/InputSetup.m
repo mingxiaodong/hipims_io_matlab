@@ -77,8 +77,7 @@ function InputSetup(caseFolder, Z, R, varargin)
 %               matrix with the same size of Z
 %   See also FieldSetUp, gen_VB_ID, WriteInitialValue.
 %   Created by Xiaodong Ming on 03 Aug 2017. Based on FieldSetup
-%   Updated by Xiaodong Ming on 15 Aug 2017.
-%   Updated by Xiaodong Ming on 21 Aug 2017. 
+%   Updated by Xiaodong Ming on 28 Aug 2018. 
 
 %% location and write path
 % SourceValueCell, MaskValueCell, InitialValueCell, h_eta_string
@@ -545,7 +544,9 @@ for i = 1:length(BoundType_Vec)
 end
 
 %% ****id_IV: valid cells' ID and their initial value
-if or(strcmp(fileName,'h'),strcmp(fileName,'eta')) % avoid the depth in the flow-input-bound cells to be nil
+
+% avoid the depth in the flow-input-bound cells to be nil
+if or(strcmp(fileName,'h'),strcmp(fileName,'eta')) 
     InitialValue(Bound_ID>=2) = InitialValue(Bound_ID>=2)+adjustValue;
 end 
 
@@ -593,7 +594,7 @@ BondType_Vector_Print = [Cell_Bound_ID(:,1), BondType_Vector_Print];
 
 %% print files
 % if the value in 'h.dat' or 'hU.dat' is pure nil,add a small positive value to the first element
-if strcmp(fileName(1),'h')&&sum(id_IV(:,2))==0 
+if strcmp(fileName,'h')&&sum(id_IV(:,2))==0 
     id_IV(1,2) = adjustValue;
 end
 fileID = fopen([writePath fileName '.dat'],'w');

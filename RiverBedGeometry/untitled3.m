@@ -1,5 +1,5 @@
 clc,clear
-tic
+% tic
 addpath /Users/b4042552/Dropbox/Matlab/myfunction
 load('CarlisleRiverChannelData.mat')
 bankLine1 = [channelBoundaryLine(1).X', channelBoundaryLine(1).Y'];

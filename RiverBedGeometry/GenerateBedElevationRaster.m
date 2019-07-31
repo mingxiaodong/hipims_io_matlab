@@ -5,7 +5,10 @@ function [Z,R] = GenerateBedElevationRaster(bankLine1,bankLine2,cellsize,varargi
 % cellsize: is the output raster cell size
 % crossSectionLine: a cell of xyz value of points on cross section lines. 
 %       If it is empty, then default two parabola lines will be given.
-% errorDistance: the error value when linearize the bank line
+% errorDistance: (meter) the error value when linearize the bank line
+% example:
+%    bankLine1 = [1 2 3 4 5;];
+%    [Z,R] = GenerateBedElevationRaster(bankLine1,bankLine2,cellsize,crossSectionLine,errorDistance);
 % Created by Xiaodong Ming on 2017-3-11
 if isempty(varargin)
     errorDistance = cellsize*2;
@@ -61,13 +64,16 @@ wholeRow = round(range(channelPoly.Y)/cellsize)+1;
 wholeRaster_z = nan(wholeRow,wholeCol);
 %*****************subfunction: Raster2FeaturePoints************************
 [wholeRaster_x,wholeRaster_y] = Raster2FeaturePoints(wholeRaster_z,wholeRaster_r);
-for i = 1:length(subSectionPolyCell)
+for i = 1:length(subSectionPolyCell) % regions divided by cross-section line
     cutLines = cutLineCell{i};
     allSubSections   = subSectionPolyCell{i};
     for j=1:length(allSubSections)
         crossLine0 = cutLines(j).XYZ;
         crossLine1 = cutLines(j+1).XYZ;
         subSecPoly1 = allSubSections(j);
+        if numel(unique(subSecPoly1.X))==1||numel(unique(subSecPoly1.Y))==1
+            continue
+        end
         in_subsection = inpolygon(wholeRaster_x,wholeRaster_y,subSecPoly1.X,subSecPoly1.Y);
         if sum(in_subsection(:))>0
 %*****************subfunction: DiscretizeChannel2Points********************
@@ -75,11 +81,14 @@ for i = 1:length(subSectionPolyCell)
             X_grid = X_grid(:); Y_grid = Y_grid(:); p = [X_grid,Y_grid];
             [p,ia,~]= unique(p,'rows','stable');
             v = Z_grid(ia);
+            v = v(:);
             F = scatteredInterpolant(p,v,'linear','nearest');
             xq = wholeRaster_x(in_subsection);
             yq = wholeRaster_y(in_subsection);
             zq = F(xq,yq);
+            if ~isempty(zq)
             wholeRaster_z(in_subsection) = zq;
+            end
         end
     end
 end
@@ -103,7 +112,12 @@ end
 if isnan(bankLine2(end,1))
     bankLine2(end,:)=[];
 end
-if abs(bankLine1(1,1)-bankLine2(1,1))>abs(bankLine1(1,1)-bankLine2(end,1))
+VectorA2B = @(xy_a,xy_b)[xy_a(1)-xy_b(1), xy_a(2)-xy_b(2),0];
+ThetaInDegrees = @(u,v) atan2d(norm(cross(u,v)),dot(u,v));
+u = VectorA2B(bankLine1(1,:),bankLine1(end,:));
+v = VectorA2B(bankLine2(1,:),bankLine2(end,:));
+angle = ThetaInDegrees(u,v);
+if angle>90
     bankLine2 = bankLine2(end:-1:1,:);
 end
 bLine1 = bankLine1;
@@ -129,7 +143,7 @@ for i=1:length(crossLines)
     xyzdata = crossLines{i};
     xy_Point = xyzdata(1,1:2);
     [xy_prj1, ~] = PrjToBankLine(xy_Point,bankLine1);
-    [xy_prj2, ~] = PrjToBankLine(xy_Point,bankLine1);
+    [xy_prj2, ~] = PrjToBankLine(xy_Point,bankLine2);
     if norm(xy_Point-xy_prj1)>norm(xy_Point-xy_prj2)
         xyzdata = xyzdata(end:-1:1,:);
     end
@@ -140,15 +154,17 @@ end
 cLines = crossLines;
 bankLine1_infill = InfillPoints(bankLine1,4);
 bankLine2_infill = InfillPoints(bankLine2,4);
-% firstCrossPoints = nan(length(crossLines),2);
+firstCrossPoints = nan(length(crossLines),2);
 prjPoints = nan(length(crossLines),2);
 prjInd = prjPoints;
 for i=1:length(crossLines)
     xyzdata = crossLines{i};
+    xyzdata = InfillPoints(xyzdata,4);
     % 1. find the position point of each cross line inside channel
     in = inpolygon(xyzdata(:,1),xyzdata(:,2),channelPoly.X,channelPoly.Y);
     if sum(in)==0 % cross-section line is outside the channel polygon
-        if norm(xyzdata(1,1:2)-bankLine1(1,1:2))<norm(xyzdata(1,1:2)-bankLine1(end,1:2))%the first
+            %the first cross section line
+        if norm(xyzdata(1,1:2)-bankLine1(1,1:2))<norm(xyzdata(1,1:2)-bankLine1(end,1:2))
             [xy0,ind0] = PrjToBankLine(bankLine1(1,1:2),xyzdata(:,1:2));
             [xy1,ind1] = PrjToBankLine(bankLine2(1,1:2),xyzdata(:,1:2));
             prjInd(i,:) = [1 1];
@@ -163,25 +179,38 @@ for i=1:length(crossLines)
         xyzdata_cut = xyzdata(in,:);
         firstCrossPoint = xyzdata_cut(1,1:2);
         lastCrossPoint = xyzdata_cut(end,1:2);
-    % 2. project the main position points to bank line1
-        [xy_prj0, indbetween] = PrjToBankLine(firstCrossPoint,bankLine1_infill);
-        [xy_prj1, ~] = PrjToBankLine(lastCrossPoint,bankLine2_infill);
-        prjPoints(i,:) = xy_prj0;
-        prjInd(i,:) = indbetween;
-        [xy0,ind0] = PrjToBankLine(xy_prj0,xyzdata(:,1:2));
-        [xy1,ind1] = PrjToBankLine(xy_prj1, xyzdata(:,1:2));
+%     2. project the main position points to bank lines
+        [xy_prj1, indbetween1] = PrjToBankLine(firstCrossPoint,bankLine1_infill);
+        [xy_prj2, indbetween2] = PrjToBankLine(lastCrossPoint, bankLine2_infill);
+        prjPoints(i,:) = xy_prj1;
+        prjInd(i,:) = indbetween1;
+        [xy0,ind0] = PrjToBankLine(xy_prj1, xyzdata(:,1:2));
+        [xy1,ind1] = PrjToBankLine(xy_prj2, xyzdata(:,1:2));
     end
     
     z0 = mean(xyzdata(ind0,3));
     z1 = mean(xyzdata(ind1,3));
     xyzdata_exp = [xy0,z0;xyzdata_cut;xy1,z1];
-    cLines{i} = xyzdata_exp;
+
+    cLines{i} = xyzdata_cut;%xyzdata_exp;
+    
 end
     % 3. compare the position of the projected points
 meanPrjInd = mean(prjInd,2);
 [~,sortInd] = sort(meanPrjInd);
 cLines = cLines(sortInd);
+emptyTag = nan;
+emN=1;
+for i=1:length(cLines)    
+    if isempty(cLines{i})
+        emptyTag(emN) = i;emN=emN+1;
+    end
 end
+if emN>1
+cLines(emptyTag)=[];  
+end
+end
+
 
 % with subfunctions: PrjToBankLine
 function sectionPoly = Channel2Sections(bLine1,bLine2,cLines)
@@ -531,7 +560,13 @@ for i = 1:infillTimes
     newY = [inputPoints(1:end-1,2),inputPoints_half(:,2)];
     newX = newX'; newX = newX(:);
     newY = newY'; newY = newY(:);
-    outPutPoints = [[newX,newY];inputPoints(end,:)];
+    if size(inputPoints,2)==3
+        newZ = [inputPoints(1:end-1,3),inputPoints_half(:,3)];
+        newZ = newZ'; newZ = newZ(:);
+        outPutPoints = [[newX,newY,newZ];inputPoints(end,:)];
+    else
+        outPutPoints = [[newX,newY];inputPoints(end,:)];
+    end
     inputPoints = outPutPoints;
 end
 end

@@ -16,6 +16,7 @@ function DomainDecomposite(orginalInput,multiInput,numGPU,varargin)
 %   Example
 %   -------
 %   % convert manning.dat & h.dat
+%   DomainDecomposite(orginalInput,multiInput,numGPU)
 %   DomainDecomposite(orginalInput,multiInput,numGPU,'manning','h')
 %   DomainDecomposite(orginalInput,multiInput,4,[0.1 0.4 0.3 0.2],'manning','h')
 %   Updated by Xiaodong Ming on 8 Mar 2018.

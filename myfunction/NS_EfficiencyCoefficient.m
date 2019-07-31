@@ -1,5 +1,6 @@
-function E = NS_EfficiencyCoefficient(varargin)
-%NSEfficiencyCoefficient calculate the Nash–Sutcliffe model efficiency coefficient
+function [NSE,RMSE] = NS_EfficiencyCoefficient(varargin)
+% EfficiencyCoefficient calculate the Nash–Sutcliffe efficiency(NSE) 
+% and root-mean-square error coefficient RMSE
 %   Qsimu and Qobv are vectors withe the same length
 if length(varargin) == 2
     Qobv = varargin{1};
@@ -30,6 +31,7 @@ else
     y_obv = Qobv;
 end
 
-E = 1-sum((y_simu-y_obv).^2)/sum((y_obv-mean(y_obv)).^2);
+NSE = 1-sum((y_simu-y_obv).^2)/sum((y_obv-mean(y_obv)).^2);
+RMSE = sqrt(sum((y_simu-y_obv).^2)/numel(y_obv));
 end
 

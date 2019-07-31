@@ -1,10 +1,15 @@
 classdef HiPIMS_Setup
+    % To set up the input data and parameters for HiPIMS model
+    % Created by Xiaodong Ming on Mar 2018
+    % Renewed by Xiaodong Ming on 30-Aug-2018
     properties
         Z % DEM matrix
         R % DEM spatial reference
         CaseFolder % dir of input folder
-        BoundStruct %structure: Position([X Y]), Type('rigid','open'), T_h (time, water depth), T_uv (time, velocity)
+        BoundStruct %structure: Position([X Y]), Type('rigid','open'), T_h (time, water depth), T_huv (time, velocity)
         h0 = 0; % initial water depth
+        u0 = []; % initial water velocity in X direction
+        v0 = []; % initial water velocity in Y direction
         uv0 = 0; % initial water velocity = [u0, v0]
         RainMask = 0;
         RainSources ={[0,0;1,0]} % cell, consisting of time series of rainfall rate (m/s)
@@ -15,14 +20,15 @@ classdef HiPIMS_Setup
         capillary_head = 0;
         water_content_diff = 0;
         LanduseMask
-        GaugeCoor = [0 0];
+        GaugeCoor = [];
         DefenceMonitor %3 cols: X,Y,Water Elevation(failing threshold)
         DefenceFailureZ
         readme
     end
+    
     properties (Access = private)
         ID_ValidCell % the ID of valid cell starting from 0 at lower left corner and increasing by 1 rightwards and upwards
-        ID_BoundCell % the ID of boundary cells, 1 for outline bound
+        ID_BoundCell % the ID of boundary cells, 1 represents the outline bound
         BoundTypeCode % BoundTypeCode.h; BoundTypeCode.hU; code to define the bound type
         AllInputFileNames = {'all',...
             'DEM',... % DEM.txt at mesh folder
@@ -47,9 +53,12 @@ classdef HiPIMS_Setup
         MeshFolder
         History
     end
+    
     methods
         %% initialization
         function obj = HiPIMS_Setup(Z_dem,R_dem,varargin)
+            % obj = HiPIMS_Setup(Z_dem,R_dem)
+            % obj = HiPIMS_Setup(Z_dem,R_dem,CaseFolder)
             obj.Z = Z_dem;
             obj.R = R_dem;
             if length(varargin)==1
@@ -64,30 +73,40 @@ classdef HiPIMS_Setup
             obj.ID_ValidCell = GetValidID(obj);
             % default bound type: single outline bound, open with no water outside
             obj.BoundStruct = struct('Type','open','Position','outline',...
-                'T_h',[0 0; 1 0],'T_uv',[0 0 0; 1 0 0]);
+                'T_h',[0 0; 1 0],'T_huv',[0 0 0; 1 0 0]);
             obj.ID_BoundCell= GetBoundID(obj);
             obj.History = struct('DateTime',datestr(datetime('now')),'Log','Created');
             %struct('DateTime',datetime('now'),'Log','Created');
         end
         
         function obj = setBoundary(obj,boundStruct)
+            % obj = setBoundary(obj,boundStruct)
+            % boundStruct: Position([X Y]), Type('rigid','open'), T_h (time, water depth), T_huv (time, velocity)
             obj.BoundStruct = boundStruct;
             obj.ID_BoundCell = GetBoundID(obj);
-            % decompose flow into velocity x and y
+            
             for i=1:length(obj.BoundStruct)
-                T_uv = obj.BoundStruct(i).T_uv;
-                if size(T_uv,2)==2 % uv is given as flow
-                    flow = T_uv(:,2);
+                % decompose flow into velocity x and y
+                if strcmp(obj.BoundStruct(i).Type,'rigid')
+                   obj.BoundStruct(i).T_huv = [];
+                   obj.BoundStruct(i).T_h = [];
+                end
+                % decompose flow into velocity x and y
+                T_huv = obj.BoundStruct(i).T_huv;
+                if size(T_huv,2)==2 % uv is given as flow m^3/s
+                    flow = T_huv(:,2);
                     BoundWidth = abs(obj.R(2))*length(obj.ID_BoundCell(i).BoundIndAtZ);
                     if BoundWidth > 0
                         Q_per_m = flow/BoundWidth; % m^2/s
                         [I,J] = ind2sub(size(obj.Z),obj.ID_BoundCell(i).BoundIndAtZ); %range(cols):delta_x, range(a):delta_y
                         theta = atan(range(J)/range(I)); %theta: the angle between bound line and the vertical line
-                        hu = Q_per_m*cos(theta); hv = Q_per_m*sin(theta); %m^2/s
+                        hu = Q_per_m*cos(theta); 
+                        hv = Q_per_m*sin(theta); %m^2/s
                     else
                         hu = flow*0; hv = flow*0; % no inflow bound, width is zero
                     end
-                    obj.BoundStruct(i).T_uv = [T_uv(:,1),hu,hv];
+                    obj.BoundStruct(i).T_huv = [T_huv(:,1),hu,hv];
+
                 end
             end
             obj.History = writeHistory(obj,'Boundary changed');
@@ -124,10 +143,10 @@ classdef HiPIMS_Setup
                     newPosition = [newPosition(:,2)-y0,x0-newPosition(:,1)];
                     newBoundStruct(i).Position = newPosition;
                 end
-                if ~isempty(newBoundStruct(i).T_uv)
-                    T_uv = newBoundStruct(i).T_uv;
-                    T_uv = [T_uv(:,1),T_uv(:,3),T_uv(:,2)];
-                    newBoundStruct(i).T_uv = T_uv;
+                if ~isempty(newBoundStruct(i).T_huv)
+                    T_huv = newBoundStruct(i).T_huv;
+                    T_huv = [T_huv(:,1),T_huv(:,3),T_huv(:,2)];
+                    newBoundStruct(i).T_huv = T_huv;
                 end
             end
             obj.BoundStruct = newBoundStruct;
@@ -163,6 +182,37 @@ classdef HiPIMS_Setup
             obj.History = writeHistory(obj,'DEM Roatated');
         end
         
+        function objNew = Resample(obj,newResolution)
+            % objNew = Resample(obj,50)
+            % resample model grid resolution
+            % normally from high to low            
+            if size(obj.uv0,2)>1
+                obj.u0 = obj.uv0(:,1:end/2);
+                obj.v0 = obj.uv0(:,end/2+1:end);
+            else
+                obj.u0 = obj.uv0;
+                obj.v0 = obj.uv0;
+            end
+            obj.uv0 = [obj.u0,obj.v0];
+            objNew = obj;
+            objNew.CaseFolder = [obj.CaseFolder '_' num2str(newResolution) 'm'];
+            [objNew.Z,objNew.R] = ResampleRaster(obj.Z,obj.R,newResolution);
+            varNames = {'h0','u0','v0','manning','sewer_sink',...
+                'hydraulic_conductivity','cumulative_depth',...
+                'capillary_head','water_content_diff',...
+                'RainMask'};
+            for i=1:length(varNames)
+                orginalData = eval(['obj.' varNames{i}]);
+                if numel(orginalData)>1
+                    [newData,~] = ResampleRaster(orginalData,obj.R,newResolution);
+                else
+                    newData = orginalData;
+                end
+                eval(['objNew.' varNames{i} '=newData;']);
+                obj.readme = newData;
+            end
+        end
+        
         function obj = setDefenceFailureZ(obj,lineShp,changeValue,ChangeMethod)
             [~, changeIndV] = AmendDEM(obj.Z,obj.R,lineShp,changeValue,ChangeMethod);
             obj.DefenceFailureZ = changeIndV;
@@ -170,7 +220,7 @@ classdef HiPIMS_Setup
         end
         
         %% write files
-        function output1 = writeInputFile(obj,varargin)
+        function output = writeInputFile(obj,varargin)
             if isempty(varargin)
                 filenames = {'all'};
             else
@@ -190,7 +240,7 @@ classdef HiPIMS_Setup
             if WriteFlag(1)==1 % all
                 WriteFlag = 1:17;
             end
-            output1 = obj.AllInputFileNames(WriteFlag); output1 = output1';
+            output = obj.AllInputFileNames(WriteFlag); output = output';
             for i = WriteFlag
                 switch i
                     case 1 % write all input files
@@ -205,7 +255,7 @@ classdef HiPIMS_Setup
                         writeFile_zType(obj,writeName,zValue,'h')
                         disp(writeName)
                     case 4 % initial water velocity
-                        writeName = [obj.FieldFolder 'hU.dat'];
+                        writeName = [obj.FieldFolder 'hU.dat'];                       
                         if isscalar(obj.uv0)
                             zValue = obj.uv0+zeros(size([obj.Z obj.Z]));
                         else
@@ -281,9 +331,9 @@ classdef HiPIMS_Setup
                     case 17 % hU_BC
                         n = 0;
                         for j=1:length(obj.BoundStruct)
-                            if ~isempty(obj.BoundStruct(j).T_uv)
+                            if ~isempty(obj.BoundStruct(j).T_huv)
                                 dlmwrite([obj.FieldFolder 'hU_BC_' num2str(n) '.dat'],...
-                                    obj.BoundStruct(j).T_uv,'precision',10,'delimiter',' ')
+                                    obj.BoundStruct(j).T_huv,'precision',10,'delimiter',' ')
                                 n=n+1;
                                 disp([obj.FieldFolder 'hU_BC_' num2str(n) '.dat for Bound' num2str(j)])
                             end
@@ -325,49 +375,57 @@ classdef HiPIMS_Setup
         function Logs=GetHistory(obj)
             Logs = obj.History;
         end
+        
         function GeneralMap(obj)
-            [~] = PlotBoundID(obj);
+            % GeneralMap(obj)
+            % plot DEM and boundary cells
+            [~,lgd] = PlotBoundID(obj);
             hold on
-            mapshow(zeros(size(obj.Z)),obj.R,'Cdata',obj.Z,'DisplayType','surface')
-            demcmap(obj.Z)
-            mapshow(obj.GaugeCoor(:,1),obj.GaugeCoor(:,2),'DisplayType','Point')
-            lgd = legend;
-            lgd.String(end-1)=[];
+            if ~isempty(obj.GaugeCoor)
+                mapshow(obj.GaugeCoor(:,1),obj.GaugeCoor(:,2),'DisplayType','Point')
+                lgd.String{end} = 'Gauge Position';
+            end
+            mapshow(obj.Z,obj.R,'DisplayType','surface')            
+            zdatam('allline',max(obj.Z(:)))
             hold off
-        end
-        function ValidID = PlotValidID(obj)
-            mapshow(obj.ID_ValidCell,obj.R,'DisplayType','surface')
-            axis image;
-            ValidID = obj.ID_ValidCell;
-            %             title('Valid cells ID')
-        end
-        function BoundID = PlotBoundID(obj)
+            lgd.String(end)=[];
+        end        
+        
+        function [BoundID,lgd] = PlotBoundID(obj)
+            % plot DEM cells
             BoundID = obj.ID_BoundCell;
             hold on
+            colorStr = {'k','r','b','m','y','c','g'};
             for i=1:length(BoundID)
                 [row,col] = ind2sub(size(obj.Z),BoundID(i).BoundIndAtZ);
                 [x,y] = pix2map(obj.R,row,col);
+                n = i;
+                while n>length(colorStr)
+                    n=n-length(colorStr)+1;
+                end
                 if ~isempty(x)
-                    if i==1
-                        plot(x,y,'k.')
-                    else
-                        plot(x,y,'*')
-                    end
+                   plot(x,y,'s','MarkerEdgeColor',colorStr{n},'MarkerFaceColor',colorStr{n})
                 end
             end
             hold off
             axis image; grid on; box on
             lgd = legend;
-            lgd.String{1} = 'Outline boundary';
+            lgd.String{1} = 'Outline Boundary';
             if length(lgd.String)>1
                 for i=2:length(lgd.String)
-                    lgd.String{i} = ['Boundary ', num2str(i-1)];
+                    lgd.String{i} = ['IO Boundary ', num2str(i-1)];
                 end
             end
             lgd.Box = 'off'; %lgd.Location = 'best';
             lgd.Color = 'none';
         end
         
+        function ValidID = PlotValidID(obj)
+            mapshow(obj.ID_ValidCell,obj.R,'DisplayType','surface')
+            axis image;
+            ValidID = obj.ID_ValidCell;
+            %             title('Valid cells ID')
+        end
     end
     methods (Access = private)
         function NewHistory = writeHistory(obj,str)
@@ -399,27 +457,28 @@ classdef HiPIMS_Setup
             Z_r = [z_dem(:,1)+nan,z_dem(:,1:end-1)];
             Z_NeigbourPlus = Z_u+Z_d+Z_l+Z_r+z_dem;
             OutlineBound = isnan(Z_NeigbourPlus)&~isnan(z_dem);
-            OutlineBound = find(OutlineBound);
-            OutlineBoundLeft = OutlineBound;
+            % the index of outline cells at Z matrix
+            OutlineBound = find(OutlineBound);             
             [row,col] = ind2sub(size(z_dem),OutlineBound);
             [xq,yq] = pix2map(r_dem,row,col); % XY coords of outline points
             numBound = length(boundStruct);
-            if numBound==0 %outlint boundary, boundStruct is empty
+            if numBound==0 %outline boundary, boundStruct is empty
                 boundID.BoundIndAtZ = OutlineBound;
                 boundID.Type = 'open'; %outlint boundary, boundStruct is 1
-            elseif numBound==1 %outlint boundary
+            elseif numBound==1 %only outline boundary
                 boundID.BoundIndAtZ = OutlineBound;
                 if isempty(boundStruct(1).Type)
                     boundID.Type = 'open';
                 else
                     boundID.Type = boundStruct.Type;
                 end
-            else % there are IO boundaries, starting from 2
+            else % there are more boundaries apart from outline, starting from 2
+                OutlineBoundRemain = OutlineBound;
                 for i=2:numBound
                     %IO boundary
                     X = boundStruct(i).Position(:,1);
                     Y = boundStruct(i).Position(:,2);
-                    if sum(~isnan(X)) == 2 %only two points for bound region polygon
+                    if sum(~isnan(X)) == 2 %if only two points for bound region polygon
                         X = [min(X);max(X);max(X);min(X)];
                         Y = [min(Y);min(Y);max(Y);max(Y)];
                         boundStruct(i).Position = [X Y];
@@ -427,14 +486,14 @@ classdef HiPIMS_Setup
                     ind = inpolygon(xq,yq,X,Y);
                     boundID(i).BoundIndAtZ = OutlineBound(ind);
                     boundID(i).Type = boundStruct(i).Type;
-                    OutlineBoundLeft(ind) = nan;
+                    OutlineBoundRemain(ind) = nan;
                 end
-                OutlineBoundLeft(isnan(OutlineBoundLeft)) = [];
-                boundID(1).BoundIndAtZ = OutlineBoundLeft;
+                OutlineBoundRemain(isnan(OutlineBoundRemain)) = [];
+                boundID(1).BoundIndAtZ = OutlineBoundRemain;
                 if isempty(boundStruct(1).Type)
                     boundID(1).Type = 'open';
                 else
-                    boundID(1).Type = boundStruct.Type;
+                    boundID(1).Type = boundStruct(1).Type;
                 end
             end
             % define bound type code
@@ -449,7 +508,7 @@ classdef HiPIMS_Setup
                     else
                         boundID(i).CodeH  = [3 0 h_cnt]; h_cnt = h_cnt+1;
                     end
-                    if isempty(boundStruct(i).T_uv)
+                    if isempty(boundStruct(i).T_huv)
                         boundID(i).CodeHU  = [2 1 0];
                     else
                         boundID(i).CodeHU  = [3 0 hU_cnt]; hU_cnt = hU_cnt+1;
@@ -514,13 +573,15 @@ classdef HiPIMS_Setup
         end
         %%
         function writeFile_zType(obj,filename,zValue,TypeFlag)
+            % this type of input file has boundary type code in the end of
+            % the file
             % TypeFlag = 'h','hU',[]?others?
             id_BoundCell = obj.ID_BoundCell; % struct
             id_bC = {id_BoundCell.BoundIndAtZ}'; % id cell2mat(
             % id & bound code
             for i=1:length(id_BoundCell)
                 if strcmp(TypeFlag,'h')
-                    if i>1 % add a minimum water depth for IO boundary
+                    if i>1 % add an value of initial water depth for IO boundary
                         zValue(id_BoundCell(i).BoundIndAtZ) = 0.0001;
                     end
                     repcodes = id_BoundCell(i).CodeH;

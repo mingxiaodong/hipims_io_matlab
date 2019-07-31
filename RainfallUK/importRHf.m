@@ -119,7 +119,7 @@ for col=[2,4,5,7,8,9]
     % Converts strings in the input cell array to numbers. Replaced non-numeric
     % strings with NaN.
     rawData = dataArray{col};
-    for row=1:size(rawData, 1);
+    for row=1:size(rawData, 1)
         % Create a regular expression to detect and remove non-numeric prefixes and
         % suffixes.
         regexstr = '(?<prefix>.*?)(?<numbers>([-]*(\d+[\,]*)+[\.]{0,1}\d*[eEdD]{0,1}[-+]*\d*[i]{0,1})|([-]*(\d+[\,]*)*[\.]{1,1}\d+[eEdD]{0,1}[-+]*\d*[i]{0,1}))(?<suffix>.*)';
@@ -129,15 +129,15 @@ for col=[2,4,5,7,8,9]
             
             % Detected commas in non-thousand locations.
             invalidThousandsSeparator = false;
-            if any(numbers==',');
+            if any(numbers==',')
                 thousandsRegExp = '^\d+?(\,\d{3})*\.{0,1}\d*$';
-                if isempty(regexp(thousandsRegExp, ',', 'once'));
+                if isempty(regexp(thousandsRegExp, ',', 'once'))
                     numbers = NaN;
                     invalidThousandsSeparator = true;
                 end
             end
             % Convert numeric strings to numbers.
-            if ~invalidThousandsSeparator;
+            if ~invalidThousandsSeparator
                 numbers = textscan(strrep(numbers, ',', ''), '%f');
                 numericData(row, col) = numbers{1};
                 raw{row, col} = numbers{1};

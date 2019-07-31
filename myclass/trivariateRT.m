@@ -67,30 +67,42 @@ classdef trivariateRT
             obj.PureEvent = ExtractDuplicateEvents(obj.XDT(ind),obj.Xdata(ind,:),dayGap);
             obj.Mt = obj.yearnum/height(obj.PureEvent);
             obj.DependStruct = TriCorr(obj);
-            obj = distFit(obj);
+%             obj = distFit(obj);
         end
         
         function obj = distFit(obj,varargin)
             % varargin: distribution names(one or three) 
-            if isempty(varargin)
-                distNames = {'GeneralizedExtremeValue'};
-            else
-                distNames = varargin;
+            defaultDistName='GeneralizedExtremeValue';
+            expectedDistName = {'GeneralizedExtremeValue','GeneralizedPareto'};
+            
+            validClassPosObj = @(x) isa(x,'trivariateRT');
+            validStringParam = @(x) any(validatestring(x,expectedDistName));
+            p_arg = inputParser;
+            addRequired(p_arg,'object',validClassPosObj);
+            addOptional(p_arg,'distname1',defaultDistName,validStringParam);
+            addOptional(p_arg,'distname2',defaultDistName,validStringParam);
+            addOptional(p_arg,'distname3',defaultDistName,validStringParam);
+            parse(p_arg,obj,varargin{:});
+            
+
+            distname1 = p_arg.Results.distname1;
+            distname2 = p_arg.Results.distname2;
+            distname3 = p_arg.Results.distname3;
+            distnames = {distname1,distname2,distname3};
+            pdCell = cell(1,3);
+            for i=1:length(distnames)
+                if strcmp(distnames{i},'GeneralizedPareto')
+                    pdCell{i} = fitdist(obj.PureEvent.Event(:,i),distnames{i},'Theta',obj.thV(i)-0.000001);
+                else
+                    pdCell{i} = fitdist(obj.PureEvent.Event(:,i),distnames{i});
+                end
             end
-            distname1 = distNames{1};
-            if numel(distNames)==1
-                distname2 = distNames{1};
-                distname3 = distNames{1};
-            elseif numel(distNames)==3
-                distname2 = distNames{2};
-                distname3 = distNames{3};
-            end
+            pd1 = pdCell{1};
+            pd2 = pdCell{2};
+            pd3 = pdCell{3};
             Xe_pure1 = obj.PureEvent.Event(:,1);
             Xe_pure2 = obj.PureEvent.Event(:,2);
             Xe_pure3 = obj.PureEvent.Event(:,3);
-            pd1 = fitdist(Xe_pure1,distname1);
-            pd2 = fitdist(Xe_pure2,distname2);
-            pd3 = fitdist(Xe_pure3,distname3);
             h1 = kstest(Xe_pure1,'CDF',[Xe_pure1, cdf(pd1,Xe_pure1)]);
             h2 = kstest(Xe_pure2,'CDF',[Xe_pure2, cdf(pd2,Xe_pure2)]);
             h3 = kstest(Xe_pure3,'CDF',[Xe_pure3, cdf(pd3,Xe_pure3)]);
@@ -100,6 +112,13 @@ classdef trivariateRT
             h3 = chi2gof(Xe_pure3,'CDF',pd3);
             obj.testChi = [h1 h2 h3];
             obj.pd = [pd1,pd2,pd3];
+            
+            disp('GOT fit test results:')
+            disp([pd1.DistributionName,' for ' obj.name{1}])
+            disp([pd2.DistributionName,' for ' obj.name{2}])
+            disp([pd3.DistributionName,' for ' obj.name{3}])
+            disp(['KS Test: h=' num2str(obj.testKS)])
+            disp(['Chi-squre Test: h=' num2str(obj.testChi)])
         end
         
         function Output1 = TriCorr(obj)
@@ -299,25 +318,16 @@ classdef trivariateRT
     end
     
     function Output1 = QQPlot(obj)
-        subplot(1,3,1)
-        qqplot(obj.PureEvent.Event(:,1),obj.pd(1))
-        ylabel('Observed Value')
-        xlabel('Theoretical Value')
-        title(['QQ plot for ' obj.pd(1).DistributionName])
-        axis image square
-        subplot(1,3,2)
-        qqplot(obj.PureEvent.Event(:,2),obj.pd(2))
-        ylabel('Observed Value')
-        xlabel('Theoretical Value')
-        title(['QQ plot for ' obj.pd(2).DistributionName])
-        axis image square
-        subplot(1,3,3)
-        qqplot(obj.PureEvent.Event(:,3),obj.pd(3))
-        ylabel('Observed Value')
-        xlabel('Theoretical Value')
-        title(['QQ plot for ' obj.pd(3).DistributionName])
-        axis image square
+        for i=1:3
+            subplot(1,3,i)
+            qqplot(obj.PureEvent.Event(:,i),obj.pd(i))
+            ylabel(['Observed ' obj.name{i} ': ' obj.unit{i} ])
+            xlabel(['Theoretical ' obj.name{i} ': ' obj.unit{i} ])
+            title(obj.pd(i).DistributionName)
+            axis image square
+        end
         Output1 = obj.PureEvent.Event;
+        
     end
     
     function CDFPlot(obj)

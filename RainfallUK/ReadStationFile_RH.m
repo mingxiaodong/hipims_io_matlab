@@ -1,5 +1,5 @@
 function RH_T = ReadStationFile_RH(filelocation,srcID)
-%% importRDf_T   import data from station daily rainfall txt files and transfer the data to a table
+%% ReadStationFile_RH   import data from station daily rainfall txt files and transfer the data to a table
 %% Initialize variables.
 filename = [filelocation,'/',num2str(srcID),'.txt'];
 delimiter = ',';

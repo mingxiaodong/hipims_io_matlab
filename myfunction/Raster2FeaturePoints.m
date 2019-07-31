@@ -1,6 +1,6 @@
 function [X,Y] = Raster2FeaturePoints(Z,R)
 %[X,Y] = RASTER2FEATUREPOINTS(Z,R) Conver raster grid to feature points
-%
+%   X,Y are the coordinates of the central point of each square cell
 %   [X,Y] = Raster2FeaturePoints(Z,R) rerurns the X and Y coordinates of
 %   the feature points. Z is the raster grid matrix and R is the reference
 %   matrix.

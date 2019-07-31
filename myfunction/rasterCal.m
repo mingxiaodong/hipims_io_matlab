@@ -1,6 +1,7 @@
 function z_out = rasterCal(Z,varargin)
-%% z_output = rasterCal(Z,calRange,method) raster calculation
-%% z_output = rasterCal(Z,calRange,method,nanflag) raster calculation
+% z_output = rasterCal(Z,calRange,method) raster calculation
+% z_output = rasterCal(Z,calRange,method,nanflag) raster calculation
+% calRange: number of neighbouring cells to be calculated
 % method: min, max, mode, median, sum
 % nanFlag: 'omitnan','includenan'
 nanFlag = 'omitnan';

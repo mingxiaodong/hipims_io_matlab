@@ -65,19 +65,33 @@ classdef univariateRT
         end
         
         function obj = distFit(obj,varargin)
-            % varargin: distribution names 
-            if isempty(varargin)
-                distNames = {'GeneralizedExtremeValue'};
-            else
-                distNames = varargin;
-            end
-            distname = distNames{1};
+            % varargin: distribution names
+            defaultDistName='GeneralizedExtremeValue';
+            expectedDistName = {'GeneralizedExtremeValue','GeneralizedPareto'};
+            
+            validClassPosObj = @(x) isa(x,'univariateRT');
+            p_arg = inputParser;
+            addRequired(p_arg,'object',validClassPosObj);
+            addOptional(p_arg,'distname',defaultDistName,@(x) any(validatestring(x,expectedDistName)));
+            parse(p_arg,obj,varargin{:});
+            
             Xe_pure = obj.PureEvent.Event;
-            obj.pd = fitdist(Xe_pure,distname);
+            distname = p_arg.Results.distname;
+            if strcmp(distname,'GeneralizedPareto')
+                obj.pd = fitdist(Xe_pure,distname,'Theta',obj.thV-0.000001);
+            else
+                obj.pd = fitdist(Xe_pure,distname);
+            end
+            % Show test results
+            disp(['GOT fit test results for ' distname])
             h = kstest(Xe_pure,'CDF',[Xe_pure, cdf(obj.pd,Xe_pure)]);
             obj.testKS = h;
+            disp(['KS Test: h=' num2str(obj.testKS)])
+            % h = 1 indicates the rejection of the null hypothesis that 
+            %   data in vector Xe_pure comes from the defined distribution 
             h = chi2gof(Xe_pure,'CDF',obj.pd);
             obj.testChi = h;
+            disp(['Chi-squre Test: h=' num2str(obj.testChi)])
         end
         
         function Fx = CDF(obj,x)
@@ -95,6 +109,22 @@ classdef univariateRT
         end
         
     %% visualization
+    function histPlot(obj)
+        % plot a histograme with probability density curve
+        y = obj.PureEvent.Event;
+        n = length(y);
+        ymax = 1.1*max(y);
+        ymin = min(y); 
+        nbins = ceil(sqrt(n));
+        bins = linspace(ymin,ymax,nbins*4);
+        h = bar(bins,histc(y,bins)/n,'histc');
+        h.FaceColor = [.9 .9 .9];
+        ygrid = linspace(ymin,ymax,100);
+        line(ygrid,pdf(obj.pd,ygrid));
+        xlabel('Block Maximum');
+        ylabel('Probability Density');
+        xlim([ymin ymax]);
+    end
     function QQPlot(obj)
         hqq = qqplot(obj.PureEvent.Event,obj.pd);
         hqq(1).MarkerEdgeColor = 'r';
@@ -123,22 +153,23 @@ classdef univariateRT
     
     function RTPlot(obj,varargin)
         % RTPlot(obj,xrange,'bound')
-        % xsample = RTPlot(obj,xrange)        
-        xsample = obj.PureEvent.Event;
-        [f,x,flo,fup]  = ecdf(xsample);
-        if isempty(varargin)
-            xrange = x;
-        else
-            xrange = varargin{1};  
-        end
+        % xsample = RTPlot(obj,xrange)
+        [f,x,flo,fup]  = ecdf(obj.PureEvent.Event);
+        defaultXrange = x;
+        defaultBound = false;
+        defaultYscale = 'linear';
+        expectedYscale = {'linear','log'};
+        p_arg = inputParser;
+        validClassPosObj = @(x) isa(x,'univariateRT');
+        validVectorPosNum = @(x) isnumeric(x) && isvector(x);
+        addRequired(p_arg,'object',validClassPosObj);
+        addOptional(p_arg,'xrange',defaultXrange,validVectorPosNum);
+        addParameter(p_arg,'bound',defaultBound,@islogical);
+        addParameter(p_arg,'yscale',defaultYscale,@(x) any(validatestring(x,expectedYscale)));
+        parse(p_arg,obj,varargin{:});
+        xrange = p_arg.Results.xrange;
         
-        if numel(varargin)>=2&&strcmpi(varargin{2},'bound')
-            BoundFlag = true;
-            lgdstr = {'Empirical','Theoretical','95% Theoretical CI'};
-        else
-            BoundFlag = false;
-            lgdstr = {'Empirical','Theoretical'};        
-        end
+
         ci = paramci(obj.pd);
         Fx_CI0 = cdf(obj.pd.DistributionName,xrange,ci(1,1),ci(1,2),ci(1,3));
         Fx_CI1 = cdf(obj.pd.DistributionName,xrange,ci(2,1),ci(2,2),ci(2,3));
@@ -149,24 +180,26 @@ classdef univariateRT
         plot(x,RT_e(:,1),'r+')
         hold on
         plot(xrange,RT_t,'b','LineWidth',1.5)
-        if BoundFlag
+        if p_arg.Results.bound % plot bound
+            lgdstr = {'Empirical','Theoretical','95% Theoretical CI'};
             plot(xrange,RT_t_up,'k--')
             plot(xrange,RT_t_down,'k--')
+        else
+            lgdstr = {'Empirical','Theoretical'};        
         end
-%         plot(x,RT_e(:,2:3),'r--')
+
         hold off
-%         xsample = [x RT_e];
         title(['Return Period of ' obj.name])
         xlabel([obj.name ': ' obj.unit])
         ylabel('Return period: year')
         ax = gca;
-        if numel(varargin)==3&&strcmpi(varargin{3},'log')
-            ax.YScale = 'log';
-        end
+        ax.YScale = p_arg.Results.yscale;
         ax.XLim = [min(xrange) max(xrange)];
         ax.YLim = [min(RT_t) max(RT_t)];
         ax.Box = 'on';
-        legend(lgdstr,'Location','southeast')
+        lgh = legend(lgdstr,'Location','north');
+        lgh.Color='none';
+        lgh.Box='off';
     end
     
     end

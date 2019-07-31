@@ -1,10 +1,11 @@
 function [z_New,r_new] = ResampleRaster(Z,R,varargin)
+% Resample a raster grid to a new spatial resolution
 % [z_New,r_new] = ResampleRaster(Z,R,newResolution) resample a raster matrix
-% [z_New,r_new] = ResampleRaster(Z,R,resolution)
 % [z_New,r_new] = ResampleRaster(Z,R,interpMethod)
-% [z_New,r_new] = ResampleRaster(Z,R,resolution,interpMethod)
-% [z_New,r_new] = ResampleRaster(Z,R,z_outsize,r_output)
-% [z_New,r_new] = ResampleRaster(Z,R,z_outsize,r_output,interpMethod)
+% [z_New,r_new] = ResampleRaster(Z,R,newResolution,interpMethod)
+% newResolution: 
+% interpMethod: default linear
+% function Raster2FeaturePoints is required in this function
 interpMethod = 'linear';
 newResolution = [];
 z_outsize = [];

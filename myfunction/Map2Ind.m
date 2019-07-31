@@ -1,9 +1,9 @@
 function outputInd = Map2Ind(X,Y,sizeZ,R)
-%outputInd = Map2Ind(X,Y,sizeNewZ,newR) convert map coordiantes XY to index of Z matrix of the map
-%   xy: 2col array X and Y map coordiantes
-%   sizeZ 2-integer vector, size of Z mat [rows cols]
-%   R: reference mat of map
-%   Detailed explanation goes here
+% OutputInd = Map2Ind(X,Y,[nrows,ncols],R) convert map coordiantes XY 
+% to the index of the map matrix
+%       X and Y: points map coordiantes
+%       [nrows,ncols]: 2-integer vector, size of domain matrix
+%       R: reference mat of the domain matrix
 % Created by Xiaodong Ming on 11/3/2018
 [row,col] = map2pix(R,X(:),Y(:));
 row = round(row); col = round(col);

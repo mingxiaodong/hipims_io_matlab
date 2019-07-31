@@ -1,35 +1,35 @@
+%% export ascii files from UK NIMROD rainfall radar file downloaded from
+% http://data.ceda.ac.uk/badc/ukmo-nimrod/data/composite/uk-1km
+
+% Matlab function "rdnim1km.m" is essential in this script and it can be 
+% downloaded from http://data.ceda.ac.uk/badc/ukmo-nimrod/software/Matlab
 clear,clc
 addpath C:\Users\b4042552\Dropbox\Matlab\RainfallUK
 cd('G:\Data\UK_EU\UK_Rainfall_Radar')
-%% decompress the *gz.tar files
+% decompress *.gz.tar files
 fileList = dir('*201512*gz.tar');
 outputdir = 'G:\Data\UK_EU\UK_Rainfall_Radar\201512';
 for i = 1:length(fileList)
     untar(fileList(i).name,outputdir)
 end
-%% decompress the *gz files
+% decompress  *.gz files
 cd(outputdir)
 files = '*dat.gz';
 gunzip(files,outputdir)
 delete(files)
-%% get radar rain files to be extracted
+%% get the list of radar rain files to be extracted
 mylist = dir('*1km-composite.dat');
 %mylist = mylist(1:288);
 %% load the catchment frame
-% basinPoly = shaperead('G:\Data\London\LondonCatchment2.shp');
 basinPoly = shaperead('G:\Data\Cumbria\EdenCatchment.shp');
 x_west = basinPoly.BoundingBox(1);
 x_east = basinPoly.BoundingBox(2);
 y_south = basinPoly.BoundingBox(3);
 y_north = basinPoly.BoundingBox(4);
-% m = ceil(range(basinPoly.Y)/1000); %number of rows
-% n = ceil(range(basinPoly.X)/1000); %number of columns
-% x = basinPoly.X(1:end-1);
-% y = basinPoly.Y(1:end-1);
-% x = (x-basinPoly.BoundingBox(1,1))/1000;
-% y = (y-basinPoly.BoundingBox(1,2))/1000;
-% basinMask = poly2mask(x,y,m,n);
-%% 
+
+%% According to the coverage of the local catchment,
+% extract UK rainfall radar files to samller ascii files that can be used to 
+% create a rainfall source file required in HiPIMS
 for i = 1:length(mylist)
     % read the binary file
     fileName = mylist(i).name;
@@ -86,12 +86,13 @@ fprintf(fileID,'cellsize    %.2f\n', abs(R(1,2)));
 fprintf(fileID,'NODATA_value    %d\n', noDATA_value);
 fclose(fileID);
 dlmwrite(writeFileName,Z_mask,'-append','delimiter','\t')
-%% make animation for radar rainfall
+%% ================================VISUALIZATION===========================
+% make animation for radar rainfall
 clear,clc
 mylist = dir('201412*asc');
 mylist = mylist(289:576);
 basinPoly = shaperead('G:\Data\London\LondonCatchment2.shp');
-%%
+%% draw rainfall maps
 for i=1:length(mylist)
 h_fig = figure;
 [Z,R] = arcgridread(mylist(i).name);
@@ -107,7 +108,7 @@ title(mylist(i).name(1:12))
 print(h_fig,'-djpeg','-r100',[mylist(i).name(1:12) 'h.jpg']);
 close(h_fig);
 end
-%% make animations
+%% make rainfall animations
 clear,clc
 cd('G:\Data\Cumbria\UK_Rainfall_Radar\Composite_1km')
 mylist = dir('20151204*.jpg');

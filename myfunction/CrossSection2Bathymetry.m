@@ -378,7 +378,7 @@ for i = 1:length(crossPointsSortedCell)
     meanL = (bankLineBottom_lw(p1Inds(1)+1,1)+bankLineTop_lw(p2Inds(1)+1,1))/2;
     meanL_sort(i) = meanL;
 end
-meanL_sort = [meanL_sort,(1:length(meanL_sort))'];
+meanL_sort = [meanL_sort(:),(1:length(meanL_sort))'];
 meanL_sort = sortrows(meanL_sort,1);
 crossPointsSortedCell = crossPoints_xyzCell(meanL_sort(:,2));
 end

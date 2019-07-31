@@ -1,6 +1,8 @@
 function [outputArg1,outputArg2] = CombineMultiGPUResults(caseFolder,resultFileName)
-%CombineMultiGPUResults Summary of this function goes here
-%   Detailed explanation goes here
+%CombineMultiGPUResults combine multi-GPU results
+% [Z,R] = CombineMultiGPUResults(caseFolder,'Asc-files')
+% [gauge_time_value,gauge_Ind] = CombineMultiGPUResults(caseFolder,'h_gauges.dat')
+
 list = dir(caseFolder);
 list(~[list.isdir])=[];
 folderNum = nan(length(list),1);
@@ -44,7 +46,11 @@ for i=folderNum_max:-1:0
         z0 = Z;
     elseif length(resultFileName)>10&&strcmp(resultFileName(end-9:end),'gauges.dat')
         % read DEM XY range & gauges position
+        
         fileID = fopen([caseFolder '/' num2str(i) '/input/mesh/DEM.txt']);
+        if fileID < 0 
+            error('DEM.txt file in each domain is required to combine  guages.dat files')
+        end
         M = textscan(fileID,'%s %f\n',5); M = M{2};
         domainRectangle = [M(3),M(4);...
             M(3),M(4)+M(5)*M(2);...

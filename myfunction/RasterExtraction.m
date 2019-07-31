@@ -1,11 +1,11 @@
 function [Z_new,R_new] = RasterExtraction(Z,R,mask)
 %RASTEREXTRACTION Extract a raster Z by a mask array
-%   [Z_new,R_new] = RasterExtraction(Z,R,mask) Extract a raster Z by a 
-%   mask vectorand return new data matrix Z_new and reference matrix R_new.
-%   Z and R are the value and spatial reference matrix of the raster to be
-%   extracted. mask is a two column matrix giving the X and Y coordinates
-%   of points that define the extent of extraction. If mask has only two 
-%   points then their diagonal rectangle will be the extraction mask. 
+%   [Z_new,R_new] = RasterExtraction(Z,R,mask) Extract a raster Z by a mask
+%       vectorand return new data matrix Z_new and reference matrix R_new.
+%   Z and R: the value and spatial reference matrix of the raster to be extracted. 
+%   mask: a two column matrix giving the X and Y coordinates of points that
+%           define the extent of extraction. If mask has only two points 
+%           then their diagonal rectangle will be the extraction mask. 
 X = mask(:,1); Y = mask(:,2);
 R_new = R;
 if size(mask,1) == 2

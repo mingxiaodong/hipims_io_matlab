@@ -68,26 +68,40 @@ classdef bivariateRT
             obj.PureEvent = ExtractDuplicateEvents(obj.XDT(ind),obj.Xdata(ind,:),dayGap);
             obj.Mt = obj.yearnum/height(obj.PureEvent);
             obj.DependStruct = BiCorr(obj);
-            obj = distFit(obj);
+%             obj = distFit(obj);
         end
         
         function obj = distFit(obj,varargin)
             % varargin: distribution names 
-            if isempty(varargin)
-                distNames = {'GeneralizedExtremeValue'};
-            else
-                distNames = varargin;
-            end
-            distname1 = distNames{1};
-            if numel(distNames)==1
-                distname2 = distNames{1};
-            else
-                distname2 = distNames{2};
-            end
+            defaultDistName='GeneralizedExtremeValue';
+            expectedDistName = {'GeneralizedExtremeValue','GeneralizedPareto'};
+            
+            validClassPosObj = @(x) isa(x,'bivariateRT');
+            validStringParam = @(x) any(validatestring(x,expectedDistName));
+            p_arg = inputParser;
+            addRequired(p_arg,'object',validClassPosObj);
+            addOptional(p_arg,'distname1',defaultDistName,validStringParam);
+            addOptional(p_arg,'distname2',defaultDistName,validStringParam);
+            parse(p_arg,obj,varargin{:});
+
             Xe_pure1 = obj.PureEvent.Event(:,1);
             Xe_pure2 = obj.PureEvent.Event(:,2);
-            pd1 = fitdist(Xe_pure1,distname1);
-            pd2 = fitdist(Xe_pure2,distname2);
+            distname1 = p_arg.Results.distname1;
+            distname2 = p_arg.Results.distname2;
+            if strcmp(distname1,'GeneralizedPareto')
+                pd1 = fitdist(Xe_pure1,distname1,'Theta',obj.thV(1)-0.000001);
+            else
+                pd1 = fitdist(Xe_pure1,distname1);
+            end
+            
+            if strcmp(distname2,'GeneralizedPareto')
+                pd2 = fitdist(Xe_pure2,distname2,'Theta',obj.thV(2)-0.000001);
+            else
+                pd2 = fitdist(Xe_pure2,distname2);
+            end
+            % GOT Test
+            % h = 1 indicates the rejection of the null hypothesis that
+            %   data in vector Xe_pure comes from the defined distribution 
             h1 = kstest(Xe_pure1,'CDF',[Xe_pure1, cdf(pd1,Xe_pure1)]);
             h2 = kstest(Xe_pure2,'CDF',[Xe_pure2, cdf(pd2,Xe_pure2)]);
             obj.testKS = [h1 h2];
@@ -95,6 +109,11 @@ classdef bivariateRT
             h2 = chi2gof(Xe_pure2,'CDF',pd2);
             obj.testChi = [h1 h2];
             obj.pd = [pd1,pd2];
+            disp('GOT fit test results:')
+            disp([pd1.DistributionName,' for var1 & ', pd2.DistributionName,' for var2'])
+            disp(['KS Test: h=' num2str(obj.testKS)])
+            disp(['Chi-squre Test: h=' num2str(obj.testChi)])
+                       
         end
         
         function Output1 = BiCorr(obj)
@@ -133,6 +152,7 @@ classdef bivariateRT
         end
         
         function jointF = JointCDF(obj,x1,x2,varargin)
+            % jointF = JointCDF(objDH,x1,x2,objSH1,objSH2)
             if isempty(varargin)
                 u1 = cdf(obj.pd(1),x1);
                 u2 = cdf(obj.pd(2),x2);
@@ -147,6 +167,7 @@ classdef bivariateRT
         end
         
         function RTV = JointRT(obj,x1,x2,varargin)
+            % RTV = JointRT(objDH,x1,x2,objSH1,objSH2)
             if isempty(varargin)
                 u1 = cdf(obj.pd(1),x1);
                 u2 = cdf(obj.pd(2),x2);
@@ -175,6 +196,7 @@ classdef bivariateRT
         end
         
         function XYV = iJointRT(obj,RT,obj1,obj2)
+            % RT: scalar(year)
             xlow = obj1.thV;
             ylow = obj2.thV;
             x1 = xlow; x2 = [ylow,ylow+range(obj2.PureEvent.Event)*20];
@@ -217,6 +239,8 @@ classdef bivariateRT
         
     %% visualizationP
     function Output1 = ScatterPlot(obj)
+        % plot scatter plot for the two varaibles and calculate their
+        % dependence value
         Output1 = obj.PureEvent.Event;
         scatter(obj.PureEvent.Event(:,1),obj.PureEvent.Event(:,2),'filled')
         str1 = ['\rho_S = ' num2str(obj.DependStruct(1).rho,'%.4f'),...
@@ -231,46 +255,67 @@ classdef bivariateRT
         ylabel(obj.unit{2})
     end
     
-    function Output1 = QQPlot(obj)
-        subplot(1,2,1)
-        qqplot(obj.PureEvent.Event(:,1),obj.pd(1))
-        ylabel('Observed Value')
-        xlabel('Theoretical Value')
-        title(['QQ plot for ' obj.pd(1).DistributionName])
-        axis image square
-        subplot(1,2,2)
-        qqplot(obj.PureEvent.Event(:,2),obj.pd(2))
-        ylabel('Observed Value')
-        xlabel('Theoretical Value')
-        title(['QQ plot for ' obj.pd(2).DistributionName])
-        axis image square
-        Output1 = obj.PureEvent.Event;
+    function Output1 = QQPlot(obj,fig_h)
+        % plot QQplot for each variable
+        % QQPlot(obj)
+        % QQPlot(obj,fig_h)        
+        % fig_h: a handle of a figure to plot
+        % return two axes
+        if nargin==2
+            ax1 = axes(fig_h,'OuterPosition',[0,0,0.5,0.5]);
+            ax2 = axes(fig_h,'OuterPosition',[0.5,0.5,0.5,0.5]);
+            
+        else
+            ax1 = subplot(1,2,1);
+            ax2 = subplot(1,2,2);
+        end
+        axCell = {ax1,ax2};
+        for i=1:2
+            axes(axCell{i})
+            qqplot(obj.PureEvent.Event(:,i),obj.pd(i))
+            ylabel(['Observed ' obj.name{i} ': ' obj.unit{i} ])
+            xlabel(['Theoretical ' obj.name{i} ': ' obj.unit{i} ])
+            title(obj.pd(i).DistributionName)
+            axis image square
+%             axCell{i}=gca;
+        end
+        Output1 = axCell;
     end
     
-    function CDFPlot(obj)
+    function axCell=CDFPlot(obj,fig_h)
+        % Plot Marginal CDF curves for each variable
+        % axCell=CDFPlot(obj);
+        % axCell=CDFPlot(obj,fig_h);
+        % fig_h: a handle of a figure to plot
+        % return two axes
+        
+        if nargin==2
+            ax1 = axes(fig_h,'OuterPosition',[0,0,0.5,0.5]);
+            ax2 = axes(fig_h,'OuterPosition',[0.5,0.5,0.5,0.5]);            
+        else
+            ax1 = subplot(1,2,1);
+            ax2 = subplot(1,2,2);
+        end
+        axCell = {ax1,ax2};
         xsample = obj.PureEvent.Event;
-        [~,x1] = ecdf(xsample(:,1));
-        ci = paramci(obj.pd(1));
-        Fx1_CI0 = cdf(obj.pd(1).DistributionName,x1,ci(1,1),ci(1,2),ci(1,3));
-        Fx1_CI1 = cdf(obj.pd(1).DistributionName,x1,ci(2,1),ci(2,2),ci(2,3));
-        [~,x2] = ecdf(xsample(:,2));
-        ci = paramci(obj.pd(2));
-        Fx2_CI0 = cdf(obj.pd(2).DistributionName,x2,ci(1,1),ci(1,2),ci(1,3));
-        Fx2_CI1 = cdf(obj.pd(2).DistributionName,x2,ci(2,1),ci(2,2),ci(2,3));
-        subplot(1,2,1)
-        ecdf(x1,'bounds','on');
-        hold on
-        plot(x1,cdf(obj.pd(1),x1),'r-')
-        plot(x1,[Fx1_CI0,Fx1_CI1],'r--')
-        hold off
-        axis image square
-        subplot(1,2,2)
-        ecdf(x2,'bounds','on');
-        hold on
-        plot(x2,cdf(obj.pd(2),x2),'r-')
-        plot(x2,[Fx2_CI0,Fx2_CI1],'r--')
-        hold off
-        axis image square
+        for i=1:2
+            axes(axCell{i})
+            [~,x1] = ecdf(xsample(:,i));
+            ci = paramci(obj.pd(i));
+            Fx1_CI0 = cdf(obj.pd(i).DistributionName,x1,ci(1,1),ci(1,2),ci(1,3));
+            Fx1_CI1 = cdf(obj.pd(i).DistributionName,x1,ci(2,1),ci(2,2),ci(2,3));
+            ecdf(xsample(:,i));%,'bounds','on'
+            hold on
+            plot(x1,cdf(obj.pd(i),x1),'r-')
+            plot(x1,[Fx1_CI0,Fx1_CI1],'r--')
+            hold off
+            xlabel(['x: ' obj.name{i} '(' obj.unit{i} ')'])
+            ylabel('CDF: F(x)')
+            title(obj.pd(i).DistributionName)
+            axis image square
+%             axCell{i}=gca;
+        end
+        
     end
     
     function Output1 = RTPlot(obj,varargin)
@@ -333,7 +378,7 @@ classdef bivariateRT
         y = obj.PureEvent.Event(:,2);
         xlow = min(x);
         ylow = min(y);
-        showObv = true;
+        showObv = false;
 %         [~,~,jointFemp] = obj.copulaEcdf([x,y]);
         rangeRatio = [1.5 1.5];
         plottype = 'Contour';
@@ -417,6 +462,25 @@ classdef bivariateRT
         surfc(x1,x2,Cn)
     end
     
+    function fig_h=MarginalFitCompare(obj)
+        % plot CDF and QQplot for each variable in a figure
+        fig_h = figure('Name','Marginal Distribution');
+%         pos2extent = @(x) [x(1:2),x(1)+x(3),x(2)+x(4)];
+        extent2pos = @(x) [x(1:2),x(3)-x(1),x(4)-x(2)];
+        axCell1 = CDFPlot(obj,fig_h);
+        axCell2 = QQPlot(obj,fig_h);
+        
+        extent = [0,0.5,0.5,1];
+        axCell1{1}.OuterPosition=extent2pos(extent);
+        extent = [0.5,0.5,1,1];
+        axCell1{2}.OuterPosition=extent2pos(extent);
+        extent = [0,0,0.5,0.5];
+        axCell2{1}.OuterPosition=extent2pos(extent);
+        extent = [0.5,0,1,0.5];
+        axCell2{2}.OuterPosition=extent2pos(extent);
+        fig_h.InnerPosition
+        fig_h.InnerPosition(3)=fig_h.InnerPosition(4);
+    end
     end
     
     methods(Static)

@@ -1,6 +1,6 @@
 %%  load result data
 clear,clc
-OutputFolder = '/Users/b4042552/Google Drive/Data?10m/';
+OutputFolder = 'K:\cudaSWEsSolver\LondonFrame4\narrow\outputFullDefence';
 list = dir(OutputFolder);
 ind = false(1,length(list));
 for i = 1:length(list)
@@ -16,7 +16,7 @@ curFolder = cd;
 PictureStoreFolder = [curFolder ''];
 figure;
 tic
-for i = 1:length(TimeSeries);
+for i = 1:length(TimeSeries)
     T = TimeSeries(i);
     TimeString = ['Time = ' datestr(t0+T/3600/24,'mm/dd HH:MM am')];
     % Mapping_Grid = ResultCell_H{i,1};
@@ -56,3 +56,4 @@ for i = 1:N
 		imwrite(A,map,AnimationName,'gif','WriteMode','append','DelayTime',0.5);
     end
 end
+% delete('*.jpg')
