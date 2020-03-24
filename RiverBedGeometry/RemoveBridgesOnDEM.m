@@ -1,11 +1,11 @@
 %% example
 clear,clc
-cd('/Users/b4042552/OneDrive/OneDrive - Newcastle University/Newcastle/SharedData')
+cd('/Users/ming/OneDrive - Newcastle University/Newcastle/SharedData')
 DEMName = 'DEM2m_NewcastleFrame2.asc';
 [Z,R] = ArcgridreadM(DEMName);%'DEM2m_NewcastleFrame2.asc'
 shp = shaperead('Bridges.shp');
 Z0 = RemoveBridge(Z,R,shp);
-mapshow(Z0,R,'DisplayType','surface')
+% mapshow(Z0,R,'DisplayType','surface')
 % Arcgridwrite('DEM2m_NewcastleFrame2_BridgeRemoved.asc',Z0,R)
 %% read a river DEM and create a bridge
 clear,clc
@@ -21,7 +21,7 @@ box on
 grid on
 ax = gca;
 ax.BoxStyle = 'full';
-export_fig riverchannel_BR.jpg -r300
+% export_fig riverchannel_BR.jpg -r300
 %% create a four-vertex polygon covering the bridge
 vert1 = [39.4,61.7];
 vert2 = [39.4,52.1];

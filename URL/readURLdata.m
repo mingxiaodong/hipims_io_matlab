@@ -7,8 +7,8 @@ url_tail = '&_limit=10000';
 dataCell = cell(height(CarlisleFlowStation),1);
 for i = 1:height(CarlisleFlowStation)
     apiID = char(CarlisleFlowStation.APIID(i)); %'765013';
-    startDate = ['&startdate=' datestr(datetime(2017,10,10),'yyyy-mm-dd')];
-    endDate   = ['&enddate=',  datestr(datetime(2017,10,16),'yyyy-mm-dd')];
+    startDate = ['&startdate=' datestr(datetime(2019,10,10),'yyyy-mm-dd')];
+    endDate   = ['&enddate=',  datestr(datetime(2019,10,16),'yyyy-mm-dd')];
     urlstr = [url_head apiID url_middle startDate endDate url_tail];
     myreadtable = @(filename)readtable(filename,'HeaderLines',0, ...
         'Format','%s%s%f','Delimiter',',','MultipleDelimsAsOne',1);
@@ -16,7 +16,7 @@ for i = 1:height(CarlisleFlowStation)
     data = webread(urlstr,options);
     dataCell{i} = data;
 end
-%%plot observations for each station
+%% plot observations for each station
 figure;
 for i = 1:length(dataCell)
     data = dataCell{i};
@@ -24,7 +24,7 @@ for i = 1:length(dataCell)
     'InputFormat','yyyy-MM-dd''T''HH:mm:ss''Z''');
     station_LevelStage = data.value;
     plot(station_DateTime,station_LevelStage)
-    xlabel('data&time')
+    xlabel('datatime')
     ylabel('level stage')
     title(CarlisleFlowStation.Station(i))
     pause(0.5)

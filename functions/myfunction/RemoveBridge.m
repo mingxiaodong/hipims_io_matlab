@@ -53,10 +53,10 @@ for i=1:length(shp)
     [I,J]=ind2sub(size(Z),crossInd2);
     [crossX2,crossY2] = pix2map(R,I,J);
     crossLine2 = [crossX2,crossY2,Z(crossInd2)];
-%     disp(i)
+    disp(i)
     crossSectionLine = {crossLine1,crossLine2};
     errorDistance = cellsize/2;
-    [Z_new,R_new] = GenerateBedElevationRaster(bankLine1,bankLine2,cellsize,crossSectionLine,errorDistance);
+    [Z_new,R_new] = GenerateBedElevationRaster(bankLine1,bankLine2,crossSectionLine,cellsize,errorDistance);
     [X_new,Y_new] = Raster2FeaturePoints(Z_new,R_new);
     X_new(isnan(Z_new))=[];
     Y_new(isnan(Z_new))=[];

@@ -4,7 +4,7 @@ function [Z,R] = ArcgridreadM(filename)
 % See also arcgridread
 fileID = fopen(filename);
 if fileID == -1
-    error([filename ' cannot be openned'])
+    error([filename ' does not exist'])
 end
 C = textscan(fileID,'%s %f',6);
 ncols = C{2}(1);
