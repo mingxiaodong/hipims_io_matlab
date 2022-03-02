@@ -5,7 +5,7 @@
 ## Mesh file: 
 DEM.txt	spatial reference of the DEM raster of the model domain
 ## Field files:
-`	`There are typically 15 field files if one boundary condition was given for depth and velocity, respectively. More field files would be created if there were more boundary conditions. The fundamental files are introduced in Table 1.
+There are typically 15 field files if one boundary condition was given for depth and velocity, respectively. More field files would be created if there were more boundary conditions. The fundamental files are introduced in Table 1.
 
 *Table 1. List of field files*
 
@@ -28,19 +28,25 @@ DEM.txt	spatial reference of the DEM raster of the model domain
 |**gauges\_pos.dat**|Monitors|coordinates of monitoring points in the model|
 
 # Calling format
-*InputSetUp(caseFolder,Z,R)* set up input files for a case. *caseFolder* is the location of the folder storing input and output files. *Z* is a matrix storing elevation values of DEM. *R* is a 3\*2 matrix of DEM spatial-reference information, including the coordinate of the original points of the raster and the size of the grid. *Z* and *R* could be created separately (*makerefmat*) or read from existing Arc ascii files via *arcgridread*. All other parameters of HiPIMS are default values if the input parameters are as listed above. 
+```
+InputSetUp(caseFolder,Z,R)
+```
+set up input files for a case. *caseFolder* is the location of the folder storing input and output files. *Z* is a matrix storing elevation values of DEM. *R* is a 3\*2 matrix of DEM spatial-reference information, including the coordinate of the original points of the raster and the size of the grid. *Z* and *R* could be created separately (*makerefmat*) or read from existing Arc ascii files via *arcgridread*. All other parameters of HiPIMS are default values if the input parameters are as listed above. 
 
-*InputSetUp (caseFolder, Z, R, Name, Value) caseFolder* is the location of the folder storing input and output files. Z is a matrix of elevation value. R is a spatial-reference matrix of DEM. Name-Value Pair Arguments are listed as Table 2.
+```
+InputSetUp(caseFolder, Z, R, Name, Value)
+```
+caseFolder* is the location of the folder storing input and output files. Z is a matrix of elevation value. R is a spatial-reference matrix of DEM. Name-Value Pair Arguments are listed as Table 2.
 
 *Table 2 Name-Value pair arguments*
 
-|**Parameter Type**|<p>**Name**s** </p><p>**(Case sensitive)**</p>|<p>**Values**</p><p>(**Default | Alternative**)</p>|**Format** of **Value**s|**Note**|
+|**Parameter Type**|**Name(Case sensitive)**|**Values(Default \| Alternative)**|**Format of Values**|**Note**|
 | :- | :- | :- | :- | :- |
-|**Decision Flags**|h\_Eta|‘h’| ‘eta’|string|To decide whether the initial conditions are given as water depth (h) or water elevation (eta)|
-||WriteAllFiles|false| true|logical|Whether to generate all the input files|
-|**Gauge coordinates**|GaugeCoor|[ ]|a numeric array (2-column) |Coordinates of the gauge points inside domain|
+|**Decision Flags**|h\_Eta|h\|eta|string|To decide whether the initial conditions are given as water depth (h) or water elevation (eta)|
+||WriteAllFiles|false\| true|logical|Whether to generate all the input files|
+|Gauge coordinates|GaugeCoor|[ ]|a numeric array (2-column) |Coordinates of the gauge points inside domain|
 |**Boundary conditions**|IO\_BoundFrame|[ ]|4\*n numeric array|Extent of the input-output boundaries. *n* is the number of IO boundaries|
-||BoundType|‘open’| 'rigid', 'hgiven', 'Qgiven', 'hQgiven'|a string or a cell of multiple strings |Type of boundaries. ‘*hgiven’* means water depth /elevation in the bound is pre-defined; ‘*Qgiven’* means the discharge/water velocity in the bound is pre-defined; *'hQgiven'* means both depth and discharge in the bound is predefined.|
+||BoundType|'open'\|'rigid', 'hgiven', 'Qgiven', 'hQgiven'|a string or a cell of multiple strings |Type of boundaries. ‘*hgiven’* means water depth /elevation in the bound is pre-defined; '*Qgiven'* means the discharge/water velocity in the bound is pre-defined; *'hQgiven'* means both depth and discharge in the bound is predefined.|
 ||h\_BC\_Source|{[0 0]}|a cell of 2-column numeric arrays|Data of pre-defined water depth/elevation. The number of 2- column arrays should be the same with the number of boundaries that h/eta has been given. The first column of the array is time(s) and the second column is the water depth/elevation (m).|
 ||hU\_BC\_Source|{[0 0 0]}|a cell of 2/3-column numeric arrays|Data of pre-defined water discharge/ water velocity. The number of numeric arrays should be the same with the number of boundaries that discharge/velocity has been given. The first column of the array is time(s) and if the array is 2-col, the second column is the discharge (m3/s) or if the array is 3-col, then the second and third column are water velocity (m/s) in x and y direction respectively.|
 ||<p>BoundCode</p><p>(not recommended)</p>|<p>[2 0 0;</p><p>` `2 1 0]</p>|2\*3n numeric array|Not recommended unless the alternative bound types cannot fulfil your requirements. It conveys more specific information of BoundType with numeric arrays. |
@@ -57,104 +63,69 @@ DEM.txt	spatial reference of the DEM raster of the model domain
 ||water\_content\_diff|0|scalar or numeric array with the same size of Z|It is one of the infiltration parameters. If it is a scalar, then all the grids in the domain have the same water content diff value.|
 ||<p>hydro\_params\_Value</p><p>(not recommended)</p>|{0.035, 0, 0, 0, 0, 0}|scalar or numeric array with the same size of Z|It is a combination of all the six hydro parameter parameters.|
 # Example
+```
 %% Example to create input files based on a peaks DEM
-
 %% creat a DEM with Z and R
-
 Z = peaks(500); % elevation values of DEM
-
 gridL = 1; % length of each square grid
-
 x11 = 0; % coordinates of the center of the upper left point
-
 y11 = (size(Z,1)-1)\*gridL;
-
 R = makerefmat(x11,y11,gridL,-gridL); %spatial reference of DEM
+mapshow(Z,R,'DisplayType','surface'); 
+colorbar; 
+box on;
+title('DEM');
+xlabel('meter towards east');
+ylabel('meter towards north');
+```
 
-mapshow(Z,R,'DisplayType','surface'); colorbar; box on;
+![Domain map](https://github.com/mingxiaodong/hipims_io_matlab/blob/master/doc/domain_map01.jpeg)
 
-title('DEM'); xlabel('meter towards east'); ylabel('meter towards north');
-
-![A close up of a logo
-
-Description generated with high confidence](https://github.com/mingxiaodong/hipims_io_matlab/tree/master/doc/domain_map01.jpeg)
-
+```
 %% define boundary condition
-
 % outline boundary
-
 outlineBoundType = 'open';
-
 % coordinates of the end row/col of Z
-
-x\_end = x11+(size(Z,2)-1)\*gridL; 
-
-y\_end = y11+(size(Z,1)-1)\*(-gridL);
-
+x_end = x11+(size(Z,2)-1)\*gridL; 
+y_end = y11+(size(Z,1)-1)\*(-gridL);
 % input-output boundary 1
-
-IO\_Bound1\_Frame = [x11-2\*gridL 2\*y11/5, x11+2\*gridL 3\*y11/5];
-
-IO\_Bound1\_Type = 'Qgiven';
-
+IO_Bound1_Frame = [x11-2\*gridL 2\*y11/5, x11+2\*gridL 3\*y11/5];
+IO_Bound1_Type = 'Qgiven';
 dischage = [0 30; 3600 300; 7200 30; 10800 30];
-
 % input-output boundary 2
-
-IO\_Bound2\_Frame = [x\_end-2\*gridL 2\*y11/5, x\_end+2\*gridL 3\*y11/5];
-
-IO\_Bound2\_Type = 'hgiven';
-
+IO_Bound2_Frame = [x_end-2\*gridL 2\*y11/5, x_end+2\*gridL 3\*y11/5];
+IO_Bound2_Type = 'hgiven';
 depth = [0 1; 3600 3; 7200 1; 10800 1];
-
-IO\_BoundFrame = [IO\_Bound1\_Frame; IO\_Bound2\_Frame];
-
-boundType = {outlineBoundType,IO\_Bound1\_Type,IO\_Bound2\_Type};
-
-h\_source = depth;
-
-Q\_source = dischage;
-
+IO_BoundFrame = [IO_Bound1_Frame; IO_Bound2_Frame];
+boundType = {outlineBoundType,IO_Bound1_Type,IO_Bound2_Type};
+h_source = depth;
+Q_source = dischage;
 % show the IO bound frames
-
-mapshow(Z,R,'DisplayType','surface');box on; axis off
-
+mapshow(Z,R,'DisplayType','surface');
+box on;
+axis off
 rectangle('Position',[x11-2\*gridL 2\*y11/5 gridL\*4 y11/5],'EdgeColor','r')
-
 rectangle('Position',[x\_end-2\*gridL 2\*y11/5 gridL\*4 y11/5],'EdgeColor','r')
+```
 
-![A close up of a logo
+![boundary map](https://github.com/mingxiaodong/hipims_io_matlab/blob/master/doc/domain_map02.jpeg)
 
-Description generated with high confidence](https://github.com/mingxiaodong/hipims_io_matlab/tree/master/doc/domain_map02.jpeg)
 
+```
 %% define rainfall condition
-
 % rainfall mask: two rainfall source, north(0) and south(1)
-
 rainMask = zeros(size(Z)); rainMask(round(size(Z,1)/2):end,:) = 1;
-
 rainSource = [0   ,  0, 100/3600/4;...
-
-`              `3600,  0, 200/3600/4;...
-
-`              `7200,  0, 100/3600/4;...
-
-`              `7201,  0, 100/3600/4];
-
+              3600,  0, 200/3600/4;...
+              7200,  0, 100/3600/4;...
+              7201,  0, 100/3600/4];
 %% generate input files
-
 caseFolder = cd;
-
 InputSetup(caseFolder, Z, R,...
-
-`        `'IO\_BoundFrame',IO\_BoundFrame,'BoundType',boundType,... 
-
-`        `'h\_BC\_Source',h\_source,...
-
-`        `'hU\_BC\_Source',Q\_source,...
-
-`        `'RainMask',rainMask,'RainSource',rainSource,...
-
-`        `'WriteAllFiles','true');
-
+        'IO\_BoundFrame',IO\_BoundFrame,'BoundType',boundType,... 
+        'h\_BC\_Source',h\_source,...
+        'hU\_BC\_Source',Q\_source,...
+        'RainMask',rainMask,'RainSource',rainSource,...
+        'WriteAllFiles','true');
+```
 
