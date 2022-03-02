@@ -61,7 +61,7 @@ caseFolder* is the location of the folder storing input and output files. Z is a
 ||hydraulic\_conductivity|0|scalar or numeric array with the same size of Z|It is one of the infiltration parameters. If it is a scalar, then all the grids in the domain have the same hydraulic conductivity value.|
 ||capillary\_head|0|scalar or numeric array with the same size of Z|It is one of the infiltration parameters. If it is a scalar, then all the grids in the domain have the same capillary head value.|
 ||water\_content\_diff|0|scalar or numeric array with the same size of Z|It is one of the infiltration parameters. If it is a scalar, then all the grids in the domain have the same water content diff value.|
-||hydro\_params\_Value(not recommended)|{0.035, 0, 0, 0, 0, 0}|scalar or numeric array with the same size of Z|It is a combination of all the six hydro parameter parameters.|
+||hydro\_params\_Value (not recommended)|{0.035, 0, 0, 0, 0, 0}|scalar or numeric array with the same size of Z|It is a combination of all the six hydro parameter parameters.|
 # Example
 ```
 %% Example to create input files based on a peaks DEM
@@ -69,7 +69,7 @@ caseFolder* is the location of the folder storing input and output files. Z is a
 Z = peaks(500); % elevation values of DEM
 gridL = 1; % length of each square grid
 x11 = 0; % coordinates of the center of the upper left point
-y11 = (size(Z,1)-1)\*gridL;
+y11 = (size(Z,1)-1)*gridL;
 R = makerefmat(x11,y11,gridL,-gridL); %spatial reference of DEM
 mapshow(Z,R,'DisplayType','surface'); 
 colorbar; 
@@ -86,14 +86,14 @@ ylabel('meter towards north');
 % outline boundary
 outlineBoundType = 'open';
 % coordinates of the end row/col of Z
-x_end = x11+(size(Z,2)-1)\*gridL; 
-y_end = y11+(size(Z,1)-1)\*(-gridL);
+x_end = x11+(size(Z,2)-1)*gridL; 
+y_end = y11+(size(Z,1)-1)*(-gridL);
 % input-output boundary 1
-IO_Bound1_Frame = [x11-2\*gridL 2\*y11/5, x11+2\*gridL 3\*y11/5];
+IO_Bound1_Frame = [x11-2*gridL 2*y11/5, x11+2*gridL 3*y11/5];
 IO_Bound1_Type = 'Qgiven';
 dischage = [0 30; 3600 300; 7200 30; 10800 30];
 % input-output boundary 2
-IO_Bound2_Frame = [x_end-2\*gridL 2\*y11/5, x_end+2\*gridL 3\*y11/5];
+IO_Bound2_Frame = [x_end-2*gridL 2*y11/5, x_end+2*gridL 3*y11/5];
 IO_Bound2_Type = 'hgiven';
 depth = [0 1; 3600 3; 7200 1; 10800 1];
 IO_BoundFrame = [IO_Bound1_Frame; IO_Bound2_Frame];
@@ -104,8 +104,8 @@ Q_source = dischage;
 mapshow(Z,R,'DisplayType','surface');
 box on;
 axis off
-rectangle('Position',[x11-2\*gridL 2\*y11/5 gridL\*4 y11/5],'EdgeColor','r')
-rectangle('Position',[x\_end-2\*gridL 2\*y11/5 gridL\*4 y11/5],'EdgeColor','r')
+rectangle('Position',[x11-2*gridL 2*y11/5 gridL*4 y11/5],'EdgeColor','r')
+rectangle('Position',[x_end-2*gridL 2*y11/5 gridL*4 y11/5],'EdgeColor','r')
 ```
 
 ![boundary map](https://github.com/mingxiaodong/hipims_io_matlab/blob/master/doc/domain_map02.jpeg)
@@ -122,9 +122,9 @@ rainSource = [0   ,  0, 100/3600/4;...
 %% generate input files
 caseFolder = cd;
 InputSetup(caseFolder, Z, R,...
-        'IO\_BoundFrame',IO\_BoundFrame,'BoundType',boundType,... 
-        'h\_BC\_Source',h\_source,...
-        'hU\_BC\_Source',Q\_source,...
+        'IO_BoundFrame',IO_BoundFrame,'BoundType',boundType,... 
+        'h_BC_Source',h_source,...
+        'hU_BC_Source',Q_source,...
         'RainMask',rainMask,'RainSource',rainSource,...
         'WriteAllFiles','true');
 ```
