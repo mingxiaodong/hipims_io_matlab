@@ -1,4 +1,4 @@
-﻿Description of InputSetup
+﻿Description of InputSetup function. There is another object-oriented function [HiPIMS_Setup](class/HiPIMS_Setup.m) available.
 # Function
 ***INPUTSETUP*** is a MATLAB function to set up the input folders and files for HiPIMS
 # List of input files
@@ -42,26 +42,26 @@ caseFolder* is the location of the folder storing input and output files. Z is a
 
 |**Parameter Type**|**Name(Case sensitive)**|**Values(Default \| Alternative)**|**Format of Values**|**Note**|
 | :- | :- | :- | :- | :- |
-|**Decision Flags**|h\_Eta|h\|eta|string|To decide whether the initial conditions are given as water depth (h) or water elevation (eta)|
+|**Decision Flags**|h\_Eta|'h'\|'eta'|string|To decide whether the initial conditions are given as water depth (h) or water elevation (eta)|
 ||WriteAllFiles|false\| true|logical|Whether to generate all the input files|
 |Gauge coordinates|GaugeCoor|[ ]|a numeric array (2-column) |Coordinates of the gauge points inside domain|
 |**Boundary conditions**|IO\_BoundFrame|[ ]|4\*n numeric array|Extent of the input-output boundaries. *n* is the number of IO boundaries|
 ||BoundType|'open'\|'rigid', 'hgiven', 'Qgiven', 'hQgiven'|a string or a cell of multiple strings |Type of boundaries. ‘*hgiven’* means water depth /elevation in the bound is pre-defined; '*Qgiven'* means the discharge/water velocity in the bound is pre-defined; *'hQgiven'* means both depth and discharge in the bound is predefined.|
 ||h\_BC\_Source|{[0 0]}|a cell of 2-column numeric arrays|Data of pre-defined water depth/elevation. The number of 2- column arrays should be the same with the number of boundaries that h/eta has been given. The first column of the array is time(s) and the second column is the water depth/elevation (m).|
 ||hU\_BC\_Source|{[0 0 0]}|a cell of 2/3-column numeric arrays|Data of pre-defined water discharge/ water velocity. The number of numeric arrays should be the same with the number of boundaries that discharge/velocity has been given. The first column of the array is time(s) and if the array is 2-col, the second column is the discharge (m3/s) or if the array is 3-col, then the second and third column are water velocity (m/s) in x and y direction respectively.|
-||<p>BoundCode</p><p>(not recommended)</p>|<p>[2 0 0;</p><p>` `2 1 0]</p>|2\*3n numeric array|Not recommended unless the alternative bound types cannot fulfil your requirements. It conveys more specific information of BoundType with numeric arrays. |
+||BoundCode (not recommended)|[2 0 0; 2 1 0]|2\*3n numeric array|Not recommended unless the alternative bound types cannot fulfil your requirements. It conveys more specific information of BoundType with numeric arrays. |
 |**Initial conditions**|initial\_hE|0|scalar or numeric array with the same size of Z|Initial water depth/elevation. If it is a scalar, then all the grids in the domain have the same initial h/eta value.|
 ||initial\_hU|{0 0}|scalar (0) or cell of two numeric arrays with the same size of Z|Initial water velocity. Two components of the cell represent initial velocity in x and y direction respectively. If it is a scalar, then all the grids in the domain have the same initial water velocity value in both x and y direction.|
-||<p>initial\_hE\_hU\_pre</p><p>(not recommended)</p>|{0, {0 0}, 0}|cell of three numeric arrays|It is a combination of all initial conditions, including initial h, hU and precipitation. The last one (precipitation) is always 0 at current version.|
+||initial\_hE\_hU\_pre (not recommended) |{0, {0 0}, 0}|cell of three numeric arrays|It is a combination of all initial conditions, including initial h, hU and precipitation. The last one (precipitation) is always 0 at current version.|
 |**Rainfall**|RainMask|0|scalar or numeric array with the same size of Z|It is the serial number of rainfall source starting from 0. Grids with the same serial number will have the same rainfall from the same source.|
-||RainSource|<p>` `[0 0;</p><p>` `3600 0]</p>|a numeric array or a cell of 2-column numeric arrays|To give rainfall value for different region of the domain.  If it is a numeric array, the first column is time(s) and the second and right forward columns are the rainfall rate(m/s), and the output rainfall source file will be a single file named ‘precipitation\_source\_all.dat’. The number of the single array column should be in accordance with the number of rainfall source in RainMask. If it is a cell of 2-column numeric arrays, each array conveys the time (s, 1st column) and rainfall rate (m/s, 2nd column) of one single rainfall source. Multiple files of rainfall source will be generated and named as ‘precipitation\_source\_n.dat’. The number of 2-column numeric arrays should be in accordance with the number of rainfall source.|
+||RainSource|[0 0; 3600 0]|a numeric array or a cell of 2-column numeric arrays|To give rainfall value for different region of the domain.  If it is a numeric array, the first column is time(s) and the second and right forward columns are the rainfall rate(m/s), and the output rainfall source file will be a single file named ‘precipitation\_source\_all.dat’. The number of the single array column should be in accordance with the number of rainfall source in RainMask. If it is a cell of 2-column numeric arrays, each array conveys the time (s, 1st column) and rainfall rate (m/s, 2nd column) of one single rainfall source. Multiple files of rainfall source will be generated and named as ‘precipitation\_source\_n.dat’. The number of 2-column numeric arrays should be in accordance with the number of rainfall source.|
 |**Hydro Parameter Values**|manning|0.035|scalar or numeric array with the same size of Z|It is manning coefficient. If it is a scalar, then all the grids in the domain have the same manning value.|
 ||sewer\_sink|0|scalar or numeric array with the same size of Z|It is sewer sink rate (m/s). If it is a scalar, then all the grids in the domain have the same sewer sink value.|
 ||cumul\_depth|0|scalar or numeric array with the same size of Z|It is one of the infiltration parameters. If it is a scalar, then all the grids in the domain have the same cumulative depth value.|
 ||hydraulic\_conductivity|0|scalar or numeric array with the same size of Z|It is one of the infiltration parameters. If it is a scalar, then all the grids in the domain have the same hydraulic conductivity value.|
 ||capillary\_head|0|scalar or numeric array with the same size of Z|It is one of the infiltration parameters. If it is a scalar, then all the grids in the domain have the same capillary head value.|
 ||water\_content\_diff|0|scalar or numeric array with the same size of Z|It is one of the infiltration parameters. If it is a scalar, then all the grids in the domain have the same water content diff value.|
-||<p>hydro\_params\_Value</p><p>(not recommended)</p>|{0.035, 0, 0, 0, 0, 0}|scalar or numeric array with the same size of Z|It is a combination of all the six hydro parameter parameters.|
+||hydro\_params\_Value(not recommended)|{0.035, 0, 0, 0, 0, 0}|scalar or numeric array with the same size of Z|It is a combination of all the six hydro parameter parameters.|
 # Example
 ```
 %% Example to create input files based on a peaks DEM
